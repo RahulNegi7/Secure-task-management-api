@@ -10,6 +10,7 @@ import com.example.taskmanager.exception.UnauthorizedAccessException;
 import com.example.taskmanager.repository.TaskRepository;
 import com.example.taskmanager.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,7 +71,7 @@ public class TaskService {
      * Retrieve a specific task by ID if owned by the authenticated user.
      */
     @Transactional(readOnly = true)
-    public TaskResponse getTaskById(Long id, String userEmail) {
+    public TaskResponse getTaskById(@NonNull Long id, String userEmail) {
         User user = getAuthenticatedUser(userEmail);
 
         Task task = taskRepository.findById(id)
@@ -88,7 +89,7 @@ public class TaskService {
      * Update an existing task if owned by the authenticated user.
      */
     @Transactional
-    public TaskResponse updateTask(Long id, TaskRequest request, String userEmail) {
+    public TaskResponse updateTask(@NonNull Long id, TaskRequest request, String userEmail) {
         User user = getAuthenticatedUser(userEmail);
 
         Task task = taskRepository.findById(id)
@@ -113,7 +114,7 @@ public class TaskService {
      * Delete an existing task if owned by the authenticated user.
      */
     @Transactional
-    public void deleteTask(Long id, String userEmail) {
+    public void deleteTask(@NonNull Long id, String userEmail) {
         User user = getAuthenticatedUser(userEmail);
 
         Task task = taskRepository.findById(id)
