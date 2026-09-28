@@ -44,45 +44,7 @@ For deep-dive technical explanations and interview preparation, refer to the gui
 
 ## 🏗️ Architecture & Request Lifecycle
 
-```
-Client (Postman / Web App)
-   │
-   │ 1. HTTP Request (Header: Authorization: Bearer <JWT_TOKEN>)
-   ▼
-┌─────────────────────────────────────────────────────────────┐
-│  JwtAuthenticationFilter (OncePerRequestFilter)             │
-│  - Extracts Bearer token from Authorization header           │
-│  - Validates cryptographic signature and expiration         │
-│  - Sets authenticated user into SecurityContextHolder       │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ 2. Authenticated Request
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Controller Layer (AuthController / TaskController)         │
-│  - Validates request DTOs (@Valid)                          │
-│  - Extracts Principal (logged-in user email)                │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ 3. Clean DTOs & Principal
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Service Layer (AuthService / TaskService)                  │
-│  - Executes business logic                                  │
-│  - Enforces strict user ownership & data isolation          │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ 4. Domain Operations
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Repository Layer (Spring Data JPA)                         │
-│  - findByUserOrderByCreatedAtDesc(user)                     │
-│  - Automated SQL parameterization (SQL Injection immunity)  │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ 5. SQL Queries
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│  MySQL Database in Docker (Port 3307:3306)                  │
-│  - 'users' and 'tasks' tables                               │
-└─────────────────────────────────────────────────────────────┘
-```
+![Runtime architecture diagram showing the API client, Spring Security, REST controllers, service layer, Spring Data JPA, MySQL, JWT and BCrypt, request guards, and trust boundaries.](./docs/runtime-architecture.png)
 
 ---
 
