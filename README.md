@@ -360,3 +360,28 @@ To run only CORS verification tests:
 ```bash
 ./mvnw test -Dtest=CorsConfigurationTest
 ```
+
+---
+
+## 🛠️ Troubleshooting & Common Gotchas
+
+### 1. Frontend White Screen or Hanging on `localhost:5173`
+* **Stale Node Process / Port Fallback:** If an earlier dev server wasn't fully stopped, Vite will automatically switch to `http://localhost:5174/`. If the browser tries to connect to `5173`, it hangs or shows a blank page. Run:
+  ```bash
+  killall node
+  cd frontend && npm run dev
+  ```
+  Check the exact URL printed in the terminal (e.g., `http://localhost:5173/`).
+* **Cold Start Dependency Optimization:** On first launch without a pre-built `.vite/deps` cache, Vite's optimizer (`esbuild`) pre-bundles React packages. This can momentarily delay the first page load. Once cached, all subsequent reloads respond instantly.
+* **Open via HTTP, Not Local File:** Never open `index.html` via `file:///` in your browser. Browsers block ES module scripts on the `file://` scheme.
+* **Port Distinction:** Remember that `http://localhost:8080` is the backend Spring Boot REST API, while `http://localhost:5173` is the React frontend dashboard.
+
+### 2. IDE Warning: *"Project configuration is not up-to-date with pom.xml"*
+* In VS Code, press **`Cmd + Shift + P`** (Mac) or **`Ctrl + Shift + P`** (Windows/Linux).
+* Type and select: **`Java: Update Project Configuration`** $\rightarrow$ select `taskmanager`.
+* This syncs the IDE's Language Server model with `pom.xml`.
+
+### 3. Database Connection Issues
+* Verify the MySQL container is active: `docker ps`.
+* If stopped, restart it with: `docker compose up -d`.
+* Database port mapped is `3307` externally to `3306` internally.
