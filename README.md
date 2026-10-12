@@ -106,37 +106,50 @@ Client (React/Vite Frontend / Postman / Vercel App)
 
 ---
 
-### 2. Step-by-Step Setup
+### 2. Running the Project
 
-#### Step A: Start the MySQL Database with Docker
-Open your terminal in the project root directory and run:
+#### 🌟 Option A: Run the Entire Full-Stack App in Docker (One Command)
+If you have Docker Desktop installed, you can build and start the MySQL database, Spring Boot backend, and React frontend simultaneously with a single command:
 ```bash
-docker compose up -d
+docker compose up --build -d
 ```
-*(This starts a MySQL 8.0 container on port `3307` with database `task_management_db` and password `password`).*
+* **Frontend UI:** `http://localhost:5173` (or `http://localhost`)
+* **Backend API:** `http://localhost:8080`
+* **MySQL Database:** `localhost:3307`
 
-To verify MySQL is running:
+To monitor logs or stop the containers:
 ```bash
-docker ps
+# View live logs
+docker compose logs -f
+
+# Stop all services
+docker compose down
 ```
 
-#### Step B: Start the Spring Boot Backend
-In the same terminal (or new tab), run:
+---
+
+#### 🛠️ Option B: Local Development (Hybrid Mode)
+
+##### Step 1: Start MySQL Database in Docker
+```bash
+docker compose up mysql-db -d
+```
+*(Starts MySQL 8.0 on port `3307` with database `task_management_db` and password `password`).*
+
+##### Step 2: Start the Spring Boot Backend
 ```bash
 ./mvnw spring-boot:run
 ```
-*(On Windows, use `mvnw.cmd spring-boot:run`)*
+*(On Windows, use `mvnw.cmd spring-boot:run`). The backend API starts on **`http://localhost:8080`**.*
 
-The backend API will start on **`http://localhost:8080`**.
-
-#### Step C: Start the React/Vite Frontend (Optional)
-In another terminal tab, navigate to the `frontend/` folder:
+##### Step 3: Start the React Frontend
+In another terminal tab:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Open the printed local URL (e.g. `http://localhost:5173`) in your browser to interact with the full UI.
+Open `http://localhost:5173` in your browser.
 
 
 ---
