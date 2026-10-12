@@ -16,6 +16,7 @@ For deep-dive technical explanations and interview preparation, refer to the gui
 - **🔐 Stateless Authentication & Authorization:** Secure JWT-based authentication using modern JJWT 0.12.x and BCrypt password hashing.
 - **🛡️ Strict Multi-Tenant Data Isolation:** Users can only view, update, and delete their own tasks, preventing Insecure Direct Object Reference (IDOR) attacks.
 - **👥 Role-Based Access Control (RBAC):** Extensible roles (`USER`, `ADMIN`).
+- **🌐 Cross-Origin Resource Sharing (CORS):** Configured for decoupled frontend clients (React/Vite, Vercel deployments) with environment-driven origins and preflight handling.
 - **🐳 Dockerized Database:** Instant MySQL 8.0 setup via Docker Compose on port `3307`.
 - **✅ Input Validation & Sanitization:** Jakarta Validation (`@Valid`, `@NotBlank`, `@Email`, `@Size`).
 - **🌐 Centralized Exception Handling:** `@RestControllerAdvice` returning uniform JSON error responses across all endpoints.
@@ -30,7 +31,7 @@ For deep-dive technical explanations and interview preparation, refer to the gui
 | :--- | :--- | :--- |
 | **Language** | Java (LTS) | 17 |
 | **Framework** | Spring Boot | 3.3.3 |
-| **Security Engine** | Spring Security (Stateless FilterChain) | 6.3.3 |
+| **Security Engine** | Spring Security (Stateless FilterChain + CORS) | 6.3.3 |
 | **Token Authentication** | JJWT (Java JWT) | 0.12.6 |
 | **Password Hashing** | BCrypt Password Encoder | Built-in |
 | **Persistence / ORM** | Spring Data JPA / Hibernate | 6.5.2 |
@@ -46,6 +47,54 @@ For deep-dive technical explanations and interview preparation, refer to the gui
 
 ![Runtime architecture diagram showing the API client, Spring Security, REST controllers, service layer, Spring Data JPA, MySQL, JWT and BCrypt, request guards, and trust boundaries.](./docs/runtime-architecture.png)
 
+```
+Client (React/Vite Frontend / Postman / Vercel App)
+   │
+   │ 1. HTTP / Preflight Request (OPTIONS or GET/POST/PUT/DELETE)
+   ▼
+┌─────────────────────────────────────────────────────────────┐
+│  CorsFilter (CorsConfigurationSource)                       │
+│  - Checks Origin against allowed origins (local / Vercel)   │
+│  - Responds to preflight OPTIONS immediately with 200 OK    │
+│  - Injects Access-Control-Allow-* headers on all responses  │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ 2. Request with Authorization: Bearer <JWT>
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│  JwtAuthenticationFilter (OncePerRequestFilter)             │
+│  - Extracts Bearer token from Authorization header           │
+│  - Validates cryptographic signature and expiration         │
+│  - Sets authenticated user into SecurityContextHolder       │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ 3. Authenticated Request
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Controller Layer (AuthController / TaskController)         │
+│  - Validates request DTOs (@Valid)                          │
+│  - Extracts Principal (logged-in user email)                │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ 4. Clean DTOs & Principal
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Service Layer (AuthService / TaskService)                  │
+│  - Executes business logic                                  │
+│  - Enforces strict user ownership & data isolation          │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ 5. Domain Operations
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Repository Layer (Spring Data JPA)                         │
+│  - findByUserOrderByCreatedAtDesc(user)                     │
+│  - Automated SQL parameterization (SQL Injection immunity)  │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ 6. SQL Queries
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│  MySQL Database in Docker (Port 3307:3306)                  │
+│  - 'users' and 'tasks' tables                               │
+└─────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## 🚀 How to Open and Run This Project
@@ -53,6 +102,7 @@ For deep-dive technical explanations and interview preparation, refer to the gui
 ### 1. Prerequisites
 * **Java 17 or higher:** `java -version`
 * **Docker Desktop:** Installed and running on your machine.
+* **Node.js 18+ & npm:** For the optional React/Vite frontend.
 
 ---
 
@@ -70,14 +120,24 @@ To verify MySQL is running:
 docker ps
 ```
 
-#### Step B: Start the Spring Boot Application
-In the same terminal, run:
+#### Step B: Start the Spring Boot Backend
+In the same terminal (or new tab), run:
 ```bash
 ./mvnw spring-boot:run
 ```
 *(On Windows, use `mvnw.cmd spring-boot:run`)*
 
-The application will start on **`http://localhost:8080`**.
+The backend API will start on **`http://localhost:8080`**.
+
+#### Step C: Start the React/Vite Frontend (Optional)
+In another terminal tab, navigate to the `frontend/` folder:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open the printed local URL (e.g. `http://localhost:5173`) in your browser to interact with the full UI.
+
 
 ---
 
@@ -237,4 +297,66 @@ The application will start on **`http://localhost:8080`**.
   "message": "You do not have permission to access this task",
   "path": "/api/tasks/1"
 }
+```
+
+---
+
+## 🌐 CORS & Frontend Deployment (Local & Vercel)
+
+The backend includes a pre-configured, production-ready CORS configuration integrated directly into the Spring Security 6 filter chain:
+
+### 1. Default Behavior (Local Development)
+- **Allowed Local Origins:** `http://localhost:5173`, `http://127.0.0.1:5173` (Vite dev servers).
+- **Vite Proxy Support:** If you run the React app locally via `npm run dev`, Vite also proxies `/api` calls directly to `http://localhost:8080`.
+- **Allowed HTTP Methods:** `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`.
+- **Allowed Headers:** `Authorization`, `Content-Type`, `Accept`, `Origin`, `X-Requested-With`.
+- **Exposed Headers:** `Authorization`.
+- **Credentials:** Disabled (`allowCredentials: false`) for maximum security since authentication relies on stateless `Bearer` tokens in headers rather than session cookies.
+
+### 2. Deployed Vercel / Cloud Frontend
+When deploying your React frontend to Vercel (or another hosting platform), configure the following environment variables:
+
+1. **On your Vercel Project Settings (Frontend):**
+   ```env
+   VITE_API_BASE_URL=https://your-backend-api.example.com
+   ```
+2. **On your Backend Server / Host (Spring Boot):**
+   ```env
+   CORS_ALLOWED_ORIGINS=https://your-frontend-project.vercel.app
+   ```
+   *(For multiple domains, separate by commas: `https://your-app.vercel.app,https://your-domain.com`)*
+
+### 3. Verifying CORS Preflight via cURL
+```bash
+curl -i -X OPTIONS http://localhost:8080/api/tasks \
+  -H "Origin: http://localhost:5173" \
+  -H "Access-Control-Request-Method: GET" \
+  -H "Access-Control-Request-Headers: Authorization"
+```
+**Expected Response:** `HTTP/1.1 200 OK` with `Access-Control-Allow-Origin: http://localhost:5173`.
+
+---
+
+## ⚙️ Environment Variables Reference
+
+| Variable | Default Value | Description |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | `jdbc:mysql://localhost:3307/task_management_db?...` | MySQL connection string |
+| `DATABASE_USERNAME` | `root` | Database username |
+| `DATABASE_PASSWORD` | `password` | Database password |
+| `JWT_SECRET` | *Pre-configured 256-bit Hex Key* | Cryptographic secret for signing JWTs |
+| `JWT_EXPIRATION` | `86400000` (24 hours) | Token expiration in milliseconds |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated list of allowed origins |
+
+---
+
+## 🧪 Automated Testing
+
+Run the full test suite including CORS integration tests:
+```bash
+./mvnw test
+```
+To run only CORS verification tests:
+```bash
+./mvnw test -Dtest=CorsConfigurationTest
 ```
